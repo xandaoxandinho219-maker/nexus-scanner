@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NEXUS | Visualize seu Risco</title>
+    <style>
+        :root { --neon-green: #00ff41; --danger-red: #ff0000; --bg-dark: #050505; }
+        
+        body { background-color: var(--bg-dark); color: white; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
+
+        /* Header */
+        .header { width: 100%; padding: 20px; text-align: center; border-bottom: 2px solid var(--neon-green); background: rgba(0,255,65,0.05); box-sizing: border-box; }
+        .logo { font-size: 22px; font-weight: bold; letter-spacing: 5px; color: var(--neon-green); text-shadow: 0 0 10px var(--neon-green); }
+
+        /* Container */
+        .main-container { max-width: 500px; width: 90%; margin-top: 30px; text-align: center; }
+        .card { background: #111; border: 1px solid #333; padding: 25px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        
+        h2 { color: var(--neon-green); font-size: 18px; text-transform: uppercase; margin-top: 0; }
+        p { font-size: 14px; color: #ccc; }
+        
+        input, select { width: 100%; padding: 12px; margin: 10px 0; background: #000; border: 1px solid var(--neon-green); color: white; border-radius: 4px; box-sizing: border-box; outline: none; }
+
+        .btn-analisar { width: 100%; padding: 15px; background: var(--neon-green); color: black; border: none; font-weight: bold; cursor: pointer; text-transform: uppercase; transition: 0.3s; margin-top: 10px; }
+        .btn-analisar:hover { background: #00cc33; box-shadow: 0 0 15px var(--neon-green); }
+
+        /* Resultado */
+        #result-box { display: none; padding: 15px; border-radius: 4px; margin-top: 20px; font-weight: bold; line-height: 1.5; }
+        .risk-high { background: rgba(255,0,0,0.15); border: 1px solid var(--danger-red); color: var(--danger-red); }
+
+        /* Administração Oculta */
+        .admin-section { margin-top: 50px; margin-bottom: 30px; }
+        .btn-admin { background: none; border: 1px solid #222; color: #333; padding: 8px 15px; cursor: pointer; font-size: 11px; text-transform: uppercase; border-radius: 4px; }
+        
+        #admin-panel { display: none; width: 95%; max-width: 800px; margin-top: 20px; background: #0a0a0a; border: 1px solid var(--neon-green); padding: 20px; border-radius: 8px; overflow-x: auto; }
+
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 13px; }
+        th, td { border: 1px solid #222; padding: 12px; text-align: left; }
+        th { background: #111; color: var(--neon-green); }
+
+        .btn-pay { background: #0077ff; color: white; text-decoration: none; padding: 6px 12px; border-radius: 4px; font-size: 11px; display: inline-block; }
+        
+        #loader { display: none; color: var(--neon-green); margin: 15px 0; font-family: monospace; }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <div class="logo">NEXUS PROTOCOL</div>
+    </div>
+
+    <div class="main-container">
+        <div class="card">
+            <h2>Visualize seu Risco</h2>
+            <p>Sistema de análise de vulnerabilidade em tempo real.</p>
+            
+            <select id="type">
+                <option value="E-mail">E-mail (Análise Grátis)</option>
+                <option value="Número">Número de Telefone (R$ 10,00)</option>
+                <option value="CPF">CPF (R$ 10,00)</option>
+            </select>
+
+            <input type="text" id="data-input" placeholder="Insira o dado para verificar...">
+            
+            <div id="loader">Conectando aos servidores de segurança...</div>
+
+            <button class="btn-analisar" onclick="iniciarAnalise()">Iniciar Verificação</button>
+
+            <div id="result-box"></div>
+        </div>
+
+        <div class="admin-section">
+            <button class="btn-admin" onclick="acessarAdmin()">Administração</button>
+        </div>
+
+        <div id="admin-panel">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333; padding-bottom: 10px;">
+                <h3 style="color: var(--neon-green); margin: 0;">Logs do Sistema</h3>
+                <button onclick="limparLogs()" style="background: var(--danger-red); color: white; border: none; cursor: pointer; padding: 5px 10px; border-radius: 4px;">Apagar Tudo</button>
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Tipo</th>
+                        <th>Dado Informado</th>
+                        <th>Status</th>
+                        <th>Ação</th>
+                    </tr>
+                </thead>
+                <tbody id="logs-body">
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        const PIX_URL = "https://nubank.com.br/cobrar/adgk5k/69f1521b-997d-4967-b411-26aff2004bff";
+
+        window.onload = renderizarLogs;
+
+        function iniciarAnalise() {
+            const tipo = document.getElementById('type').value;
+            const dado = document.getElementById('data-input').value;
+            const loader = document.getElementById('loader');
+            const resBox = document.getElementById('result-box');
+
+            if (!dado) { alert("Por favor, insira um dado válido."); return; }
+
+            loader.style.display = "block";
+            resBox.style.display = "none";
+
+            setTimeout(() => {
+                loader.style.display = "none";
+                resBox.style.display = "block";
+                resBox.className = "risk-high";
+                
+                if (tipo === "E-mail") {
+                    resBox.innerHTML = "⚠️ ALERTA CRÍTICO: Este e-mail foi detectado em vazamentos recentes. Suas senhas podem estar expostas.";
+                } else {
+                    resBox.innerHTML = "⚠️ DADOS EXPOSTOS: Encontramos vulnerabilidades ligadas a este registro. <br><br> Efetue o pagamento de R$ 10,00 para gerar o relatório de blindagem.";
+                    setTimeout(() => { window.location.href = PIX_URL; }, 3000);
+                }
+
+                salvarLog(tipo, dado);
+            }, 2500);
+        }
+
+        function salvarLog(tipo, dado) {
+            let logs = JSON.parse(localStorage.getItem('nexus_logs')) || [];
+            logs.push({ tipo, dado, data: new Date().toLocaleString() });
+            localStorage.setItem('nexus_logs', JSON.stringify(logs));
+            renderizarLogs();
+        }
+
+        function renderizarLogs() {
+            const body = document.getElementById('logs-body');
+            let logs = JSON.parse(localStorage.getItem('nexus_logs')) || [];
+            body.innerHTML = "";
+
+            logs.reverse().forEach(log => {
+                body.innerHTML += `
+                    <tr>
+                        <td>${log.tipo}</td>
+                        <td style="word-break: break-all;">${log.dado}</td>
+                        <td style="color:var(--danger-red)">VULNERÁVEL</td>
+                        <td><a href="${PIX_URL}" target="_blank" class="btn-pay">Cobranca</a></td>
+                    </tr>
+                `;
+            });
+        }
+
+        function acessarAdmin() {
+            const senha = prompt("ACESSO RESTRITO. Digite a senha master:");
+            if (senha === "29876") {
+                document.getElementById('admin-panel').style.display = "block";
+                window.scrollTo(0, document.body.scrollHeight);
+            } else {
+                alert("Senha incorreta.");
+            }
+        }
+
+        function limparLogs() {
+            if(confirm("Tem certeza que deseja apagar os logs permanentemente?")) {
+                localStorage.removeItem('nexus_logs');
+                renderizarLogs();
+            }
+        }
+    </script>
+</body>
+</html>
+  
